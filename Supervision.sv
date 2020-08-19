@@ -293,6 +293,7 @@ wire dma_rdy = ~lcd_pulse;
 wire cpu_we;
 wire [15:0] lcd_addr;
 
+wire [7:0]	controller = 8'hff;
 
 ////////////////////// IRQ //////////////////////////
 
