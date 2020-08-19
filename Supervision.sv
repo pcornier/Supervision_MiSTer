@@ -346,7 +346,7 @@ always @(posedge clk_cpu)
 wire wram_cs = AB[15:13] == 3'b000;
 wire lcd_cs  = AB[15:3]  == 13'b0010_0000_0000_0;
 wire dma_cs  = AB[15:3]  == 13'b0010_0000_0000_1;
-wire sys_cs  = AB[15:5]  == 13'b0010_0000_0010_0;
+wire sys_cs  = AB[15:5]  == 14'b0010_0000_001;
 wire vram_cs = AB[15:14] == 2'b01;
 wire rom_cs  = AB[15]    == 1'b1;
 wire rom_hi  = AB[15:14] == 2'b11;
@@ -447,7 +447,7 @@ dma dma(
   .rdy(dma_rdy),
   .ctrl(dma_ctrl),
   .src_addr({ dma_src_hi, dma_src_lo }),
-  .dst_addr({ dma_src_hi, dma_src_lo }),
+  .dst_addr({ dma_dst_hi, dma_dst_lo }),
   .addr(dma_addr), // => to AB
   .din(DI),
   .dout(dma_dout),
