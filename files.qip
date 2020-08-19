@@ -1,5 +1,8 @@
-set_global_assignment -name VERILOG_FILE rtl/lfsr.v
-set_global_assignment -name SYSTEMVERILOG_FILE rtl/cos.sv
-set_global_assignment -name SYSTEMVERILOG_FILE rtl/mycore.v
-set_global_assignment -name SDC_FILE mycore.sdc
-set_global_assignment -name SYSTEMVERILOG_FILE mycore.sv
+# set_global_assignment -name SDC_FILE Supervision.sdc
+set_global_assignment -name SYSTEMVERILOG_FILE Supervision.sv
+set_global_assignment -name VERILOG_FILE rtl/65c02/ALU.v
+set_global_assignment -name VERILOG_FILE rtl/65c02/cpu_65c02.v
+set_global_assignment -name VERILOG_FILE rtl/video.v
+set_global_assignment -name VERILOG_FILE rtl/ram88.v
+set_global_assignment -name VERILOG_FILE rtl/dma.v
+set_global_assignment -name VERILOG_FILE rtl/rom.v
