@@ -176,11 +176,11 @@ assign VIDEO_ARY = status[1] ? 8'd9  : 8'd3;
 
 `include "build_id.v"
 localparam CONF_STR = {
-	"MyCore;;",
+	"Supervision;;",
 	"-;",
 	"O1,Aspect ratio,4:3,16:9;",
 	"-;",
-	"F,cart,Load Cartridge;", // remove
+	"F,rom,Load Cartridge;",
 	"-;",
 	"T0,Reset;",
 	"R0,Reset and close OSD;",
@@ -408,14 +408,16 @@ always @*
 
 ////////////////////////////////////////////////
 
-// TODO: load with ioctl_dout
-rom #(
-  .ROMFILE("cart.mem")
-) cart(
+
+rom cart(
   .clk(clk_sys),
   .addr(rom_addr),
   .dout(rom_dout),
-  .cs(~rom_cs)
+  .cs(~rom_cs),
+  .rom_init(ioctl_download),
+  .rom_init_clk(clk_sys),
+  .rom_init_address(ioctl_addr),
+  .rom_init_data(ioctl_dout)
 );
 
 
@@ -493,7 +495,7 @@ video_cleaner video_cleaner(
 
 cpu_65c02 cpu(
   .clk(~clk_cpu),
-  .reset(RESET),
+  .reset(reset),
   .AB(cpu_addr),
   .DI(DI),
   .DO(cpu_dout),
