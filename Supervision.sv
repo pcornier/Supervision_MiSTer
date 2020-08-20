@@ -171,23 +171,25 @@ assign BUTTONS = 0;
 
 //////////////////////////////////////////////////////////////////
 
-assign VIDEO_ARX = status[1] ? 8'd16 : 8'd4;
-assign VIDEO_ARY = status[1] ? 8'd9  : 8'd3;
+assign VIDEO_ARX = status[1] ? 8'd4 : 8'd16;
+assign VIDEO_ARY = status[1] ? 8'd3  : 8'd9;
 
 `include "build_id.v"
 localparam CONF_STR = {
 	"Supervision;;",
 	"-;",
-	"O1,Aspect ratio,4:3,16:9;",
+	"O1,Aspect ratio,Original,4:3;",
 	"-;",
 	"F,rom,Load Cartridge;",
 	"-;",
 	"T0,Reset;",
 	"R0,Reset and close OSD;",
+	"J0,B,A,select,start;",
 	"V,v",`BUILD_DATE
 };
 
 wire forced_scandoubler;
+wire [15:0] joystick_0;
 wire  [1:0] buttons;
 wire [31:0] status;
 wire [10:0] ps2_key;
@@ -214,6 +216,7 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 	.status_menumask({status[5]}),
 
 	.ps2_key(ps2_key),
+	.joystick_0(joystick_0),
 
 	.ioctl_download(ioctl_download),
 	.ioctl_wr(ioctl_wr),
@@ -236,14 +239,14 @@ pll pll
 	.rst(0),
 	.outclk_0(clk_sys), // 50
 	.outclk_1(clk_vid), // 36
-	.outclk_2(clk_cpu) // 4
+	.outclk_2(clk_cpu) // 6
 );
 
 reg [15:0] nmi_clk;
 
 wire nmi = nmi_clk == 0;
 always @(posedge clk_cpu) nmi_clk <= nmi_clk + 16'b1;
-wire reset = RESET | status[0] | buttons[1];
+wire reset = RESET | status[0] | buttons[1] | ioctl_download;
 
 //////////////////////////////////////////////////////////////////
 
@@ -253,7 +256,6 @@ wire hblank;
 wire vblank;
 assign CLK_VIDEO = clk_vid;
 wire [7:0] red, green, blue;
-
 
 reg [7:0] sys_ctl;
 reg [7:0] irq_timer; // 2023
@@ -267,9 +269,6 @@ wire [7:0] wram_dout;
 wire [7:0] vram_dout;
 wire [7:0] rom_dout;
 wire [7:0] sys_dout;
-
-reg [7:0] DI;
-
 
 reg [7:0] dma_src_lo;
 reg [7:0] dma_src_hi;
@@ -292,8 +291,6 @@ wire cpu_rdy = ~dma_busy;
 wire dma_rdy = ~lcd_pulse;
 wire cpu_we;
 wire [15:0] lcd_addr;
-
-wire [7:0]	controller = 8'hff;
 
 ////////////////////// IRQ //////////////////////////
 
@@ -344,14 +341,17 @@ always @(posedge clk_cpu)
 
 
 wire wram_cs = AB[15:13] == 3'b000;
-wire lcd_cs  = AB[15:3]  == 13'b0010_0000_0000_0;
-wire dma_cs  = AB[15:3]  == 13'b0010_0000_0000_1;
-wire sys_cs  = AB[15:5]  == 14'b0010_0000_001;
+wire lcd_cs  = AB[15:3]  == 13'b0010_0000_0000_0; // match 2000-2007 LCD control registers
+wire dma_cs  = AB[15:3]  == 13'b0010_0000_0000_1; // match 2008-200F DMA control registers, 2010-201C is sound
+wire sys_cs  = AB[15:3]  == 13'b0010_0000_0010_0; // match 2020-2027, 2028-202A is sound
 wire vram_cs = AB[15:14] == 2'b01;
 wire rom_cs  = AB[15]    == 1'b1;
 wire rom_hi  = AB[15:14] == 2'b11;
 
 wire [15:0] AB = dma_busy  ? { 2'b0, dma_addr } : cpu_addr;
+
+reg [7:0] DI;
+
 wire [7:0] DO = dma_busy ? dma_dout : cpu_dout;
 wire wram_we = dma_busy ? dma_sel : ~cpu_we;
 wire vram_we = dma_busy ? ~dma_sel : ~cpu_we;
@@ -359,11 +359,10 @@ wire vram_we = dma_busy ? ~dma_sel : ~cpu_we;
 wire [15:0] rom_addr = rom_hi ? AB : { sys_ctl[6:5], AB[13:0] };
 
 always @(posedge clk_cpu)
-  DI <= wram_cs ? wram_dout :
+  DI <= sys_cs ? sys_dout :
+  wram_cs ? wram_dout :
   vram_cs ? vram_dout :
-  sys_cs ? sys_dout :
-  rom_cs  ? rom_dout : 8'hff;
-
+  rom_cs ? rom_dout : 8'hff;
 
 // write to lcd registers
 always @*
@@ -379,13 +378,13 @@ always @*
 // write to dma registers
 always @*
   if (dma_cs && cpu_we)
-    case (AB[3:0])
-      4'h8: dma_src_lo = cpu_dout;
-      4'h9: dma_src_hi = cpu_dout;
-      4'ha: dma_dst_lo = cpu_dout;
-      4'hb: dma_dst_hi = cpu_dout;
-      4'hc: dma_length = cpu_dout;
-      4'hd: dma_ctrl   = cpu_dout;
+    case (AB[2:0])
+      4'h0: dma_src_lo = cpu_dout;
+      4'h1: dma_src_hi = cpu_dout;
+      4'h2: dma_dst_lo = cpu_dout;
+      4'h3: dma_dst_hi = cpu_dout;
+      4'h4: dma_length = cpu_dout;
+      4'h5: dma_ctrl   = cpu_dout;
     endcase
 
 // write to sys registers
@@ -400,7 +399,16 @@ always @*
 always @*
   if (sys_cs && ~cpu_we)
     case (AB[2:0])
-      3'h0: sys_dout = controller;
+      3'h0: sys_dout = {
+        ~joystick_0[7],
+        ~joystick_0[6],
+        ~joystick_0[5],
+        ~joystick_0[4],
+        ~joystick_0[3],
+        ~joystick_0[2],
+        ~joystick_0[1],
+        ~joystick_0[0]
+      };
       3'h3: sys_dout = irq_timer;
       3'h6: sys_dout = sys_ctl;
     endcase
@@ -494,7 +502,7 @@ video_cleaner video_cleaner(
 );
 
 cpu_65c02 cpu(
-  .clk(~clk_cpu),
+  .clk(clk_cpu),
   .reset(reset),
   .AB(cpu_addr),
   .DI(DI),
