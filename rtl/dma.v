@@ -10,15 +10,17 @@ module dma(
   output reg [7:0] dout,
   input [7:0] length,
   output busy,
-  output sel // 1: src -> dst, 2: src <- dst
+  output sel, // 1: src -> dst, 2: src <- dst
+  output write
 );
 
 reg [11:0] queue;
 reg [12:0] addr_a, addr_b;
-wire start = ctrl[7];
+reg started;
 
 assign sel = dst_addr[14];
-assign busy = queue != 0;
+assign busy = state != DONE;
+assign write = state == WRITE;
 reg [1:0] state;
 
 parameter
@@ -28,9 +30,12 @@ parameter
   WRITE = 2'b11;
 
 always @(posedge clk)
+  started <= ctrl[7] ? 1'b1 : 1'b0;
+
+always @(posedge clk)
   if (rdy)
     case (state)
-      DONE: if (start) state <= START;
+      DONE: if (~started & ctrl[7]) state <= START;
       START: state <= READ;
       READ: state <= WRITE;
       WRITE: state <= queue == 0 ? DONE : READ;
