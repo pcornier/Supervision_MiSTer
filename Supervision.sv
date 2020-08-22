@@ -280,6 +280,7 @@ wire [7:0] dma_dout;
 wire [13:0] dma_addr;
 wire dma_busy;
 wire dma_sel;
+wire dma_write;
 
 reg [7:0] lcd_xscroll;
 reg [7:0] lcd_yscroll;
@@ -353,8 +354,8 @@ wire [15:0] AB = dma_busy  ? { 2'b0, dma_addr } : cpu_addr;
 reg [7:0] DI;
 
 wire [7:0] DO = dma_busy ? dma_dout : cpu_dout;
-wire wram_we = dma_busy ? dma_sel : ~cpu_we;
-wire vram_we = dma_busy ? ~dma_sel : ~cpu_we;
+wire wram_we = wram_cs ? dma_busy ? ~dma_write : ~cpu_we : 1'b1;
+wire vram_we = vram_cs ? dma_busy ? ~dma_write : ~cpu_we : 1'b1;
 
 wire [15:0] rom_addr = rom_hi ? AB : { sys_ctl[6:5], AB[13:0] };
 
@@ -385,6 +386,8 @@ always @*
       4'h3: dma_dst_hi = cpu_dout;
       4'h4: dma_length = cpu_dout;
       4'h5: dma_ctrl   = cpu_dout;
+      default:
+        dma_ctrl = 8'd0;
     endcase
 
 // write to sys registers
@@ -461,7 +464,8 @@ dma dma(
   .dout(dma_dout),
   .length(dma_length),
   .busy(dma_busy),
-  .sel(dma_sel)
+  .sel(dma_sel),
+  .write(dma_write)
 );
 
 video video(
