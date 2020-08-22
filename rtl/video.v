@@ -44,7 +44,8 @@ wire [7:0] lcdx = vgax >= 80 && vgax < 240 ? vgax - 8'd80 : 8'd0; // 0-79(80)|80
 wire [7:0] lcdy = vgay >= 40 && vgay < 200 ? vgay - 8'd40 : 8'd0; // 0-39(40)|40-199(160)|200-239(40)
 
 // calcul vram address (TODO include xsize, ysize, xscroll[1:0] in calculation)
-assign addr = lcd_yscroll * 8'h30 + lcd_xscroll[7:2] + lcdy * 8'h30 + lcdx[7:2];
+//assign addr = lcd_yscroll * 8'h30 + lcd_xscroll[7:2] + lcdy * 8'h30 + lcdx[7:2];
+assign addr = lcdy * 8'h30 + lcdx[7:2];
 
 assign ce_pxl = hcount[0] == 1;
 

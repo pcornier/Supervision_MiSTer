@@ -180,7 +180,7 @@ localparam CONF_STR = {
 	"-;",
 	"O1,Aspect ratio,Original,4:3;",
 	"-;",
-	"F,rom,Load Cartridge;",
+	"F,bin,Load Cartridge;",
 	"-;",
 	"T0,Reset;",
 	"R0,Reset and close OSD;",
