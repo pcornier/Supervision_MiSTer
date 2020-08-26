@@ -52,19 +52,19 @@ assign ce_pxl = hcount[0] == 1;
 // assign colors
 wire [2:0] index = { lcdx[1:0], 1'b0 };
 
-always @*
+always @(posedge clk)
   if (ce && lcdx != 0 && lcdy != 0) begin
     if (ce_pxl) begin
 		 case (data[index+:2])
-			2'b00: { red, green, blue } = 24'h87BA6B;
-			2'b01: { red, green, blue } = 24'h6BA378;
-			2'b10: { red, green, blue } = 24'h386B82;
-			2'b11: { red, green, blue } = 24'h384052;
+			2'b00: { red, green, blue } <= 24'h87BA6B;
+			2'b01: { red, green, blue } <= 24'h6BA378;
+			2'b10: { red, green, blue } <= 24'h386B82;
+			2'b11: { red, green, blue } <= 24'h384052;
 		 endcase
 	 end
   end
   else
-    { red, green, blue } = 24'h0;
+    { red, green, blue } <= 24'h0;
 
 always @(posedge clk) begin
   hcount <= hcount + 10'd1;
