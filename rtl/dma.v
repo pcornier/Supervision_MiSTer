@@ -48,15 +48,15 @@ always @(posedge clk)
       WRITE: queue <= queue - 12'b1;
     endcase
 
-always @*
+always @(posedge clk)
   if (rdy)
     case (state)
-      READ: addr = addr_a;
-      WRITE: addr = addr_b;
+      READ: addr <= addr_a;
+      WRITE: addr <= addr_b;
     endcase
 
-always @*
-  if (rdy && state == WRITE) dout = din;
+always @(posedge clk)
+  if (rdy && state == WRITE) dout <= din;
 
 always @(posedge clk)
   if (rdy)
