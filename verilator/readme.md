@@ -3,7 +3,7 @@ Verilator Simulation
 
 Because of the use of "public" keyword in configuration file (.vlt), please use at least Verilator v4.0.28.
 
-Use `make run` to build the simulation then run `./obj_dir/VSupervision`
+Use `make run` to build the simulation then run `./obj_dir/VSupervision romfile.bin`
 
 MiSTer Directory
 ----------------
