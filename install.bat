@@ -1,1 +1,1 @@
-%QUARTUS_ROOTDIR%\bin64\quartus_pgm -c DE-SoC output_files\Supervision.cdf
+%QUARTUS_ROOTDIR%\bin64\quartus_pgm -m JTAG -o p;output_files\Supervision.sof@2
