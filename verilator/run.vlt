@@ -1,0 +1,5 @@
+`verilator_config
+
+// expose io for simulation
+public -module "emu" -var "hps_io"
+public -module "hps_io" -var "*"
