@@ -3,6 +3,7 @@
 #include "VSupervision.h"
 #include "VSupervision_emu.h"
 #include "VSupervision_hps_io__S82.h"
+#include "VSupervision_pll.h"
 #include "verilated.h"
 #include <verilated_vcd_c.h>
 #include "SDL2/SDL.h"
@@ -52,6 +53,7 @@ int main(int argc, char** argv, char** env) {
   if (!ifs) return -1;
 
   VSupervision_hps_io__S82* io = sv->emu->hps_io;
+  VSupervision_pll* pll = sv->emu->pll;
 
   io->ioctl_addr = 0;
   io->ioctl_download = 1;
@@ -90,11 +92,10 @@ int main(int argc, char** argv, char** env) {
   int vgay = 0;
   bool hs = true;
   bool vs = true;
-  bool clk25; // vga clk
   bool dirty;
 
-  int start_trace = 180'000'000;
-  int stop_sim    = 200'000'000;
+  int start_trace = 120'000'000;
+  int stop_sim    = 140'000'000;
   bool tracing = false;
 
   printf("running instance\n");
@@ -117,7 +118,6 @@ int main(int argc, char** argv, char** env) {
     sv->eval();
 
     sv->CLK_50M = !sv->CLK_50M;
-    if (sv->CLK_50M) clk25 = !clk25;
 
     if (dirty) {
       SDL_BlitSurface(canvas, NULL, screen, NULL);
@@ -128,16 +128,18 @@ int main(int argc, char** argv, char** env) {
     }
 
 
-    if (clk25) {
+    if (pll->outclk_1) {
 
-      vgax += 0.25;
       if (!sv->VGA_HS && hs) { // start of hsync ¯¯\__
         hs = false;
       }
       else if (sv->VGA_HS && !hs) { // end of hsync __/¯¯
         hs = true;
-        vgax = -48;
+        vgax = -192;
         vgay++;
+      }
+      else {
+        vgax += 0.2;
       }
 
       if (!sv->VGA_VS && vs) { // start of vsync ¯¯\__

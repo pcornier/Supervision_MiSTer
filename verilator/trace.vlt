@@ -1,5 +1,10 @@
 `verilator_config
 
+// expose io for simulation
+public -module "emu" -var "hps_io"
+public -module "hps_io" -var "*"
+// expose clocks
+public -module "pll" -var "*"
 /*
 tracing_off -file "rtl/dma.v"
 tracing_off -file "rtl/lcd.v"

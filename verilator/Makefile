@@ -14,7 +14,7 @@ run:
 trace:
 	rm -rf ./obj_dir
 	verilator -Wall -Irtl -Wno-fatal --cc ../Supervision.sv -y MiSTer -y ../rtl -y ../rtl/65c02 --exe tb.cpp --trace -CFLAGS '${CFLAGS} -g' -LDFLAGS '${LDFLAGS}' trace.vlt
-	make -j -C ./obj_dir -f Vsupv.mk Vsupv
+	make -j -C ./obj_dir -f VSupervision.mk VSupervision
 	# when running on termux:
 	cp -R obj_dir ~
 

@@ -8,8 +8,19 @@ module pll(
     output reg outclk_2
 );
 
-assign outclk_0 = refclk;
-always @(posedge refclk) outclk_1 <= ~outclk_1;
-always @(posedge outclk_1) outclk_2 <= ~outclk_2;
+assign outclk_0 = refclk; // 50
+
+reg [9:0] div1, div2;
+reg p1, p2;
+always @(posedge refclk) begin
+  { p1, div1 } <= div1 + 10'd1474;
+  { p2, div2 } <= div2 + 10'd245;
+end
+
+always @(posedge p1)
+  outclk_1 <= ~outclk_1; // 36
+  
+always @(posedge p2)
+  outclk_2 <= ~outclk_2; // 6
 
 endmodule
