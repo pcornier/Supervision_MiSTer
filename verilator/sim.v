@@ -368,6 +368,7 @@ video_cleaner video_cleaner(
 );
 */
 
+
 cpu_65c02 cpu(
   .clk(clk_cpu),
   .reset(reset),
@@ -379,5 +380,23 @@ cpu_65c02 cpu(
   .NMI(nmi),
   .RDY(cpu_rdy)
 );
-   
+
+/*
+R65C02 cpu(
+    .reset(reset),
+    .clk(clk_cpu),
+    .enable(cpu_we),
+    .nmi_n(nmi),
+    .irq_n(~(irq_tim | irq_dma)),
+    .di(DI),
+
+    .dout(cpu_dout),
+    .addr(cpu_addr),
+    .nwe(),
+    .sync(),
+    .sync_irq(),
+    .Regs()
+);
+*/
+
 endmodule

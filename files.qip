@@ -7,3 +7,4 @@ set_global_assignment -name VERILOG_FILE rtl/audio.v
 set_global_assignment -name VERILOG_FILE rtl/ram88.v
 set_global_assignment -name VERILOG_FILE rtl/dma.v
 set_global_assignment -name VERILOG_FILE rtl/rom.v
+set_global_assignment -name VERILOG_FILE rtl/new65c02/r65c02.v

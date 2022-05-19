@@ -12,4 +12,5 @@ verilator \
 ../rtl/video.v \
 ../rtl/65c02/ALU.v \
 ../rtl/65c02/cpu_65c02.v \
-../rtl/65c02/cpu.v
+../rtl/65c02/cpu.v \
+../rtl/new65c02/r65c02.sv

@@ -192,9 +192,6 @@ assign BUTTONS = 0;
 
 //////////////////////////////////////////////////////////////////
 
-//assign VIDEO_ARX = status[1] ? 8'd4 : 8'd16;
-//assign VIDEO_ARY = status[1] ? 8'd3  : 8'd9;
-
 wire [1:0] ar = status[122:121];
 
 assign VIDEO_ARX = (!ar) ? 12'd4 : (ar - 1'd1);
@@ -204,11 +201,10 @@ assign VIDEO_ARY = (!ar) ? 12'd3 : 12'd0;
 localparam CONF_STR = {
 	"Supervision;;",
 	"-;",
+	"F,binsv,Load Cartridge;",
+	"-;",
 	"O[122:121],Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"O[2],TV Mode,NTSC,PAL;",  
-	//"O1,Aspect ratio,Original,4:3;",
-	"-;",
-	"F,binsv,Load Cartridge;",
 	"-;",
 	"T0,Reset;",
 	"R0,Reset and close OSD;",
@@ -554,6 +550,7 @@ audio audio(
   .CH2(audio_ch2)
 );
 
+/*
 video video(
   .clk(clk_vid),
   .ce_pxl(CE_PIXEL),
@@ -572,7 +569,28 @@ video video(
   .green(green),
   .blue(blue)
 );
+*/
 
+video video(
+  .clk(clk_vid),
+  .ce_pxl(CE_PIXEL),
+  .ce(sys_ctl[3]),
+  .lcd_xsize(lcd_xsize),
+  .lcd_ysize(lcd_ysize),
+  .lcd_xscroll(lcd_xscroll),
+  .lcd_yscroll(lcd_yscroll),
+  .addr(lcd_addr),
+  .data(lcd_din),
+  .hsync(hsync),
+  .vsync(vsync),
+  .hblank(hblank),
+  .vblank(vblank),
+  .red(VGA_R),
+  .green(VGA_G),
+  .blue(VGA_B)
+);
+
+/*
 video_cleaner video_cleaner(
 	.clk_vid(clk_vid),
 	.ce_pix(CE_PIXEL),
@@ -590,6 +608,11 @@ video_cleaner video_cleaner(
 	.VGA_HS(VGA_HS),
 	.VGA_DE(VGA_DE)
 );
+*/
+
+assign VGA_DE = ~(hblank | vblank);
+assign VGA_HS = hsync;
+assign VGA_VS = vsync;
 
 cpu_65c02 cpu(
   .clk(clk_cpu),
@@ -602,5 +625,23 @@ cpu_65c02 cpu(
   .NMI(nmi),
   .RDY(cpu_rdy)
 );
+
+/*
+R65C02 cpu(
+    .reset(reset),
+    .clk(clk_cpu),
+    .enable(cpu_we),
+    .nmi_n(nmi),
+    .irq_n(irq_tim | irq_dma),
+    .di(DI),
+
+    .dout(cpu_dout),
+    .addr(cpu_addr),
+    .nwe(),
+    .sync(),
+    .sync_irq(),
+    .Regs()
+);
+*/
 
 endmodule

@@ -61,7 +61,8 @@ V_SRC = \
 	$(RTL)/video.v \
 	$(RTL)/65c02/ALU.v \
 	$(RTL)/65c02/cpu_65c02.v \
-	$(RTL)/65c02/cpu.v			
+	$(RTL)/65c02/cpu.v \		
+	$(RTL)/new65c02/r65c02.sv
 
 C_SRC = \
 	sim_main.cpp  \

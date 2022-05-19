@@ -70,13 +70,13 @@ const int input_pause = 11;
 
 // Video
 // -----
-#define VGA_WIDTH 320
-#define VGA_HEIGHT 240
-#define VGA_ROTATE -1  // 90 degrees anti-clockwise
+#define VGA_WIDTH 640
+#define VGA_HEIGHT 480
+#define VGA_ROTATE 0  // 90 degrees anti-clockwise
 #define VGA_SCALE_X vga_scale
 #define VGA_SCALE_Y vga_scale
 SimVideo video(VGA_WIDTH, VGA_HEIGHT, VGA_ROTATE);
-float vga_scale = 2.5;
+float vga_scale = 1;
 
 // Verilog module
 // --------------
@@ -258,7 +258,6 @@ int main(int argc, char** argv, char** env) {
 
 	bus.QueueDownload("./GrandPrix.sv", 0, true);
 
-
 #ifdef WIN32
 	MSG msg;
 	ZeroMemory(&msg, sizeof(msg));
@@ -285,7 +284,6 @@ int main(int argc, char** argv, char** env) {
 		video.StartFrame();
 
 		input.Read();
-
 
 		// Draw GUI
 		// --------
