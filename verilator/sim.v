@@ -339,13 +339,13 @@ video video(
   .lcd_yscroll(lcd_yscroll),
   .addr(lcd_addr),
   .data(lcd_din),
-  .hsync(hsync),
-  .vsync(vsync),
-  .hblank(hblank),
-  .vblank(vblank),
-  .red(red),
-  .green(green),
-  .blue(blue)
+  .hsync(VGA_HS),
+  .vsync(VGA_VS),
+  .hblank(VGA_HB),
+  .vblank(VGA_VB),
+  .red(VGA_R),
+  .green(VGA_G),
+  .blue(VGA_B)
 );
 
 /*
