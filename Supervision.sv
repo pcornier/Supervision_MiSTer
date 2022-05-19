@@ -37,8 +37,8 @@ module emu
 
 	//Video aspect ratio for HDMI. Most retro systems have ratio 4:3.
 	//if VIDEO_ARX[12] or VIDEO_ARY[12] is set then [11:0] contains scaled size instead of aspect ratio.
-	output [7:0] VIDEO_ARX,
-	output [7:0] VIDEO_ARY,
+	output [12:0] VIDEO_ARX,
+	output [12:0] VIDEO_ARY,
 
 	output  [7:0] VGA_R,
 	output  [7:0] VGA_G,
@@ -192,14 +192,21 @@ assign BUTTONS = 0;
 
 //////////////////////////////////////////////////////////////////
 
-assign VIDEO_ARX = status[1] ? 8'd4 : 8'd16;
-assign VIDEO_ARY = status[1] ? 8'd3  : 8'd9;
+//assign VIDEO_ARX = status[1] ? 8'd4 : 8'd16;
+//assign VIDEO_ARY = status[1] ? 8'd3  : 8'd9;
+
+wire [1:0] ar = status[122:121];
+
+assign VIDEO_ARX = (!ar) ? 12'd4 : (ar - 1'd1);
+assign VIDEO_ARY = (!ar) ? 12'd3 : 12'd0;
 
 `include "build_id.v"
 localparam CONF_STR = {
 	"Supervision;;",
 	"-;",
-	"O1,Aspect ratio,Original,4:3;",
+	"O[122:121],Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
+	"O[2],TV Mode,NTSC,PAL;",  
+	//"O1,Aspect ratio,Original,4:3;",
 	"-;",
 	"F,binsv,Load Cartridge;",
 	"-;",
@@ -212,7 +219,7 @@ localparam CONF_STR = {
 wire forced_scandoubler;
 wire [15:0] joystick_0;
 wire  [1:0] buttons;
-wire [31:0] status;
+wire [127:0] status;
 wire [10:0] ps2_key;
 
 wire [24:0] ioctl_addr;
