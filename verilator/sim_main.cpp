@@ -257,7 +257,7 @@ int main(int argc, char** argv, char** env) {
 	if (video.Initialise(windowTitle) == 1) { return 1; }
 
 	//bus.QueueDownload("./GrandPrix.sv", 0, true);
-	bus.QueueDownload("./LinearRacing.sv", 0, true);
+	bus.QueueDownload("./LinearRacing.bin", 0, true);
 
 #ifdef WIN32
 	MSG msg;

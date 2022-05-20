@@ -169,6 +169,7 @@ module emu
 
 	input         OSD_STATUS
 );
+
 ///////// Default values for ports not used in this core /////////
 
 assign ADC_BUS  = 'Z;
@@ -178,8 +179,9 @@ assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
 assign {SDRAM_DQ, SDRAM_A, SDRAM_BA, SDRAM_CLK, SDRAM_CKE, SDRAM_DQML, SDRAM_DQMH, SDRAM_nWE, SDRAM_nCAS, SDRAM_nRAS, SDRAM_nCS} = 'Z;
 assign {DDRAM_CLK, DDRAM_BURSTCNT, DDRAM_ADDR, DDRAM_DIN, DDRAM_BE, DDRAM_RD, DDRAM_WE} = '0;
 
-assign VGA_SL = 0;
+assign VGA_SL = scale ? scale - 1'd1 : 2'd0;
 assign VGA_F1 = 0;
+assign VGA_SCALER= 0;
 
 assign AUDIO_S = 0;
 assign AUDIO_L = { audio_ch2, 12'd0 };
@@ -192,10 +194,8 @@ assign BUTTONS = 0;
 
 //////////////////////////////////////////////////////////////////
 
+wire [1:0] scale = status[3:2];
 wire [1:0] ar = status[122:121];
-
-assign VIDEO_ARX = (!ar) ? 12'd4 : (ar - 1'd1);
-assign VIDEO_ARY = (!ar) ? 12'd3 : 12'd0;
 
 `include "build_id.v"
 localparam CONF_STR = {
@@ -204,7 +204,8 @@ localparam CONF_STR = {
 	"F,binsv,Load Cartridge;",
 	"-;",
 	"O[122:121],Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
-	"O[2],TV Mode,NTSC,PAL;",  
+	//"O23,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%;",	
+	"OAB,Scale,Normal,V-Integer,Narrower HV-Integer,Wider HV-Integer;",	
 	"-;",
 	"T0,Reset;",
 	"R0,Reset and close OSD;",
@@ -249,7 +250,6 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 	.ioctl_index(ioctl_index)
 );
 
-
 ///////////////////////   CLOCKS   ///////////////////////////////
 
 wire clk_sys;
@@ -259,10 +259,10 @@ wire clk_vid;
 pll pll
 (
 	.refclk(CLK_50M),
-	.rst(0),
+	.rst(0), 
 	.outclk_0(clk_sys), // 50
-	.outclk_1(clk_vid), // 36
-	.outclk_2(clk_cpu) // 6
+	.outclk_1(clk_vid), // 9
+	.outclk_2(clk_cpu)  // 4
 );
 
 reg [15:0] nmi_clk;
@@ -272,6 +272,9 @@ always @(posedge clk_cpu) nmi_clk <= nmi_clk + 16'b1;
 wire reset = RESET | status[0] | buttons[1] | ioctl_download;
 
 //////////////////////////////////////////////////////////////////
+
+reg ce_pix = 1'b1;
+wire freeze_sync;
 
 wire hsync;
 wire vsync;
@@ -325,7 +328,6 @@ wire [3:0] audio_ch1, audio_ch2;
 
 ////////////////////// IRQ //////////////////////////
 
-
 reg [13:0] timer_div;
 
 // irq_tim
@@ -359,7 +361,6 @@ always @(posedge clk_cpu)
   else if (timer_div == 0 && irq_timer > 0)
     irq_timer <= irq_timer - 8'b1;
 
-
 /////////////////////////// MEMORY MAP /////////////////////
 
 // 0000 - 1FFF - WRAM
@@ -369,7 +370,6 @@ always @(posedge clk_cpu)
 // 6000 - 7FFF - VRAM - mirrors ??
 // 8000 - BFFF - banks
 // C000 - FFFF - last 16k of cartridge
-
 
 wire wram_cs = AB ==? 16'b000x_xxxx_xxxx_xxxx;
 wire lcd_cs  = AB ==? 16'b0010_0000_0000_0xxx; // match 2000-2007 LCD control registers
@@ -479,9 +479,7 @@ always @(posedge clk_sys)
       3'h6: sys_dout <= sys_ctl;
     endcase
 
-
 ////////////////////////////////////////////////
-
 
 rom cart(
   .clk(clk_sys),
@@ -493,7 +491,6 @@ rom cart(
   .rom_init_address(ioctl_addr),
   .rom_init_data(ioctl_dout)
 );
-
 
 ram88 wram(
   .clk(clk_sys),
@@ -569,6 +566,7 @@ video video(
   .blue(blue)
 );
 
+
 video_cleaner video_cleaner(
 	.clk_vid(clk_vid),
 	.ce_pix(CE_PIXEL),
@@ -587,21 +585,36 @@ video_cleaner video_cleaner(
 	.VGA_DE(VGA_DE)
 );
 
-//assign VGA_DE = ~(hblank | vblank);
-//assign VGA_HS = hsync;
-//assign VGA_VS = vsync;
+
+video_freak video_freak
+(
+	.*,
+	.VGA_DE_IN(VGA_DE),
+	.VGA_DE(),
+
+	.ARX((!ar) ? 12'd4 : (ar - 1'd1)),
+	.ARY((!ar) ? 12'd3 : 12'd0),
+	.CROP_SIZE(0),
+	.CROP_OFF(0),
+	.SCALE(status[11:10])
+);
 
 /*
-cpu_65c02 cpu(
-  .clk(clk_cpu),
-  .reset(reset),
-  .AB(cpu_addr),
-  .DI(DI),
-  .DO(cpu_dout),
-  .WE(cpu_we),
-  .IRQ(irq_tim | irq_dma),
-  .NMI(nmi),
-  .RDY(cpu_rdy)
+video_mixer #(640, 1) mixer
+(
+	.*,
+	.hq2x(scale == 1),
+	.scandoubler(scale || forced_scandoubler),
+	.gamma_bus(),
+
+	.R({4{VGA_R}}),
+	.G({4{VGA_G}}),
+	.B({4{VGA_B}}),
+
+	.HSync(~VGA_VS),
+	.VSync(~VGA_VS),
+	.HBlank(hblank),
+	.VBlank(vblank)
 );
 */
 
@@ -616,23 +629,5 @@ ncpu_65c02 cpu(
   .NMI(nmi),  
   .RDY(cpu_rdy)
 );
-
-/*
-R65C02 cpu(
-    .reset(reset),
-    .clk(clk_cpu),
-    .enable(cpu_we),
-    .nmi_n(nmi),
-    .irq_n(irq_tim | irq_dma),
-    .di(DI),
-
-    .dout(cpu_dout),
-    .addr(cpu_addr),
-    .nwe(),
-    .sync(),
-    .sync_irq(),
-    .Regs()
-);
-*/
 
 endmodule

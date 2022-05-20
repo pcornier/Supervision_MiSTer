@@ -48,3 +48,5 @@ verilator/Carrier.sv
 verilator/FinalCombat.sv
 verilator/SuperBlock.sv
 verilator/LinearRacing.sv
+verilator/FinalCombat.bin
+verilator/LinearRacing.bin
