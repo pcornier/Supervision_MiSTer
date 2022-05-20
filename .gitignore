@@ -44,3 +44,7 @@ verilator/.vs/sim/v17/Browse.VC.opendb
 verilator/.vs/sim/v17/Browse.VC.db-shm
 verilator/.vs/sim/v17/Browse.VC.db-wal
 verilator/GrandPrix.sv
+verilator/Carrier.sv
+verilator/FinalCombat.sv
+verilator/SuperBlock.sv
+verilator/LinearRacing.sv

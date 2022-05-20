@@ -104,7 +104,6 @@ wire [3:0] audio_ch1, audio_ch2;
 
 ////////////////////// IRQ //////////////////////////
 
-
 reg [13:0] timer_div;
 
 // irq_tim
@@ -138,7 +137,6 @@ always @(posedge clk_cpu)
   else if (timer_div == 0 && irq_timer > 0)
     irq_timer <= irq_timer - 8'b1;
 
-
 /////////////////////////// MEMORY MAP /////////////////////
 
 // 0000 - 1FFF - WRAM
@@ -148,7 +146,6 @@ always @(posedge clk_cpu)
 // 6000 - 7FFF - VRAM - mirrors ??
 // 8000 - BFFF - banks
 // C000 - FFFF - last 16k of cartridge
-
 
 wire wram_cs = AB ==? 16'b000x_xxxx_xxxx_xxxx;
 wire lcd_cs  = AB ==? 16'b0010_0000_0000_0xxx; // match 2000-2007 LCD control registers
@@ -217,7 +214,6 @@ always @(posedge clk_sys)
     endcase
   end
 
-
 // write to dma registers
 always @(posedge clk_sys)
   if (dma_cs && cpu_we)
@@ -258,9 +254,7 @@ always @(posedge clk_sys)
       3'h6: sys_dout <= sys_ctl;
     endcase
 
-
 ////////////////////////////////////////////////
-
 
 rom cart(
   .clk(clk_sys),
@@ -272,7 +266,6 @@ rom cart(
   .rom_init_address(ioctl_addr),
   .rom_init_data(ioctl_dout)
 );
-
 
 ram88 wram(
   .clk(clk_sys),
@@ -349,26 +342,6 @@ video video(
 );
 
 /*
-video_cleaner video_cleaner(
-	.clk_vid(clk_vid),
-	.ce_pix(CE_PIXEL),
-	.R(red),
-	.G(green),
-	.B(blue),
-	.HSync(~hsync),
-	.VSync(~vsync),
-	.HBlank(hblank),
-	.VBlank(vblank),
-	.VGA_R(VGA_R),
-	.VGA_G(VGA_G),
-	.VGA_B(VGA_B),
-	.VGA_VS(VGA_VS),
-	.VGA_HS(VGA_HS),
-	.VGA_DE(VGA_DE)
-);
-*/
-
-
 cpu_65c02 cpu(
   .clk(clk_cpu),
   .reset(reset),
@@ -380,14 +353,67 @@ cpu_65c02 cpu(
   .NMI(nmi),
   .RDY(cpu_rdy)
 );
+*/
+
+ncpu_65c02 cpu(
+  .clk(clk_cpu),
+  .reset(reset),
+  .AB(cpu_addr),
+  .DI(DI),
+  .DO(cpu_dout),
+  .WE(cpu_we),
+  .IRQ(irq_tim | irq_dma),
+  .NMI(nmi),  
+  .RDY(cpu_rdy)
+);
 
 /*
-R65C02 cpu(
+T65 cpu(
+    // inputs
+    .Mode(2'b01), 
+    .Res_n(~reset),     
+    .Enable(cpu_we),    
+    .Clk(clk_cpu),       
+    .Rdy(1'b1),       
+    .Abort_n(1'b1),   
+    .IRQ_n(~(irq_tim | irq_dma)),
+    .NMI_n(~nmi),     
+    .SO_n(1'b1),      
+
+    // outputs
+    .R_W_n(),   
+    .Sync(),    
+    .EF(),          
+    .MF(),          
+    .XF(),          
+    .ML_n(),        
+    .VP_n(),        
+    .VDA(),         
+    .VPA(),         
+    .A(cpu_addr[15:0]),   // o 23:0
+
+    .DI(DI),              // i 7:0
+    .DO(cpu_dout),        // o 7:0
+    .Regs(),              // 63:0
+
+    .DEBUG_I(), // o 7:0
+    .DEBUG_A(), // o 7:0
+    .DEBUG_X(), // o 7:0
+    .DEBUG_Y(), // o 7:0
+    .DEBUG_S(), // o 7:0
+    .DEBUG_P(), // o 7:0
+
+    .NMI_ack(), // o
+    .PRINT()    // o
+);
+*/
+/*
+R65C02 cpu2(
     .reset(reset),
     .clk(clk_cpu),
     .enable(cpu_we),
     .nmi_n(nmi),
-    .irq_n(~(irq_tim | irq_dma)),
+    .irq_n((irq_tim | irq_dma)),    
     .di(DI),
 
     .dout(cpu_dout),

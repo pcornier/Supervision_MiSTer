@@ -550,7 +550,6 @@ audio audio(
   .CH2(audio_ch2)
 );
 
-/*
 video video(
   .clk(clk_vid),
   .ce_pxl(CE_PIXEL),
@@ -569,28 +568,7 @@ video video(
   .green(green),
   .blue(blue)
 );
-*/
 
-video video(
-  .clk(clk_vid),
-  .ce_pxl(CE_PIXEL),
-  .ce(sys_ctl[3]),
-  .lcd_xsize(lcd_xsize),
-  .lcd_ysize(lcd_ysize),
-  .lcd_xscroll(lcd_xscroll),
-  .lcd_yscroll(lcd_yscroll),
-  .addr(lcd_addr),
-  .data(lcd_din),
-  .hsync(hsync),
-  .vsync(vsync),
-  .hblank(hblank),
-  .vblank(vblank),
-  .red(VGA_R),
-  .green(VGA_G),
-  .blue(VGA_B)
-);
-
-/*
 video_cleaner video_cleaner(
 	.clk_vid(clk_vid),
 	.ce_pix(CE_PIXEL),
@@ -608,12 +586,12 @@ video_cleaner video_cleaner(
 	.VGA_HS(VGA_HS),
 	.VGA_DE(VGA_DE)
 );
-*/
 
-assign VGA_DE = ~(hblank | vblank);
-assign VGA_HS = hsync;
-assign VGA_VS = vsync;
+//assign VGA_DE = ~(hblank | vblank);
+//assign VGA_HS = hsync;
+//assign VGA_VS = vsync;
 
+/*
 cpu_65c02 cpu(
   .clk(clk_cpu),
   .reset(reset),
@@ -623,6 +601,19 @@ cpu_65c02 cpu(
   .WE(cpu_we),
   .IRQ(irq_tim | irq_dma),
   .NMI(nmi),
+  .RDY(cpu_rdy)
+);
+*/
+
+ncpu_65c02 cpu(
+  .clk(clk_cpu),
+  .reset(reset),
+  .AB(cpu_addr),
+  .DI(DI),
+  .DO(cpu_dout),
+  .WE(cpu_we),
+  .IRQ(irq_tim | irq_dma),
+  .NMI(nmi),  
   .RDY(cpu_rdy)
 );
 

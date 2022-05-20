@@ -1,10 +1,12 @@
 # set_global_assignment -name SDC_FILE Supervision.sdc
 set_global_assignment -name SYSTEMVERILOG_FILE Supervision.sv
-set_global_assignment -name VERILOG_FILE rtl/65c02/ALU.v
-set_global_assignment -name VERILOG_FILE rtl/65c02/cpu_65c02.v
+#set_global_assignment -name VERILOG_FILE rtl/65c02/ALU.v
+#set_global_assignment -name VERILOG_FILE rtl/65c02/cpu_65c02.v
 set_global_assignment -name VERILOG_FILE rtl/video.v
 set_global_assignment -name VERILOG_FILE rtl/audio.v
 set_global_assignment -name VERILOG_FILE rtl/ram88.v
 set_global_assignment -name VERILOG_FILE rtl/dma.v
 set_global_assignment -name VERILOG_FILE rtl/rom.v
-set_global_assignment -name VERILOG_FILE rtl/new65c02/r65c02.v
+set_global_assignment -name VERILOG_FILE rtl/new65c02/ncpu_65c02.v
+set_global_assignment -name VERILOG_FILE rtl/new65c02/nALU.v
+

@@ -88,9 +88,9 @@ double sc_time_stamp() {	// Called by $time in Verilog.
 }
 
 int clk_sys_freq = 48000000;
-SimClock clk_sys(1); // 48mhz
-SimClock clk_cpu(2); // 12mhz
-SimClock clk_vid(10); // 12mhz
+SimClock clk_sys(1); 
+SimClock clk_cpu(2); 
+SimClock clk_vid(10);
 
 // VCD trace logging
 // -----------------
@@ -256,7 +256,8 @@ int main(int argc, char** argv, char** env) {
 	// Setup video output
 	if (video.Initialise(windowTitle) == 1) { return 1; }
 
-	bus.QueueDownload("./GrandPrix.sv", 0, true);
+	//bus.QueueDownload("./GrandPrix.sv", 0, true);
+	bus.QueueDownload("./LinearRacing.sv", 0, true);
 
 #ifdef WIN32
 	MSG msg;
@@ -314,9 +315,51 @@ int main(int argc, char** argv, char** env) {
 		ImGui::SetWindowPos(windowTitle_DebugLog, ImVec2(0, 160), ImGuiCond_Once);
 
 		// Memory debug
-		//ImGui::Begin("PGROM Editor");
-		//mem_edit.DrawContents(top->top__DOT__uut__DOT__rom__DOT__mem, 32768, 0);
-		//ImGui::End();
+		ImGui::Begin("ROM");
+		mem_edit.DrawContents(&top->top__DOT__cart__DOT__memory, 65536, 0);
+		ImGui::End();		
+		ImGui::Begin("WRAM");
+		mem_edit.DrawContents(&top->top__DOT__wram__DOT__memory, 8192, 0);
+		ImGui::End();
+		ImGui::Begin("VRAM");
+		mem_edit.DrawContents(&top->top__DOT__vram__DOT__memory, 8192, 0);
+		ImGui::End();
+
+/*
+		// Debug R65C02
+		ImGui::Begin("t65");
+		ImGui::Text("clk:      0x%01X", top->top__DOT__cpu__DOT__clk);	
+		ImGui::Text("enable:   0x%01X", top->top__DOT__cpu__DOT__enable);	
+		ImGui::Text("nmi_n:    0x%01X", top->top__DOT__cpu__DOT__nmi_n);	
+		ImGui::Text("irq_n:    0x%01X", top->top__DOT__cpu__DOT__irq_n);									
+		ImGui::Text("di:       0x%01X", top->top__DOT__cpu__DOT__di);	
+		ImGui::Text("dout:     0x%01X", top->top__DOT__cpu__DOT__dout);	
+		ImGui::Text("addr:     0x%01X", top->top__DOT__cpu__DOT__addr);	
+		ImGui::Text("nwe:      0x%01X", top->top__DOT__cpu__DOT__nwe);	
+		ImGui::Text("sync:     0x%01X", top->top__DOT__cpu__DOT__sync);	
+		ImGui::Text("sync_irq: 0x%01X", top->top__DOT__cpu__DOT__sync_irq);	
+		ImGui::Text("Regs:     0x%01X", top->top__DOT__cpu__DOT__Regs);	
+		ImGui::Spacing();		
+		ImGui::End();
+*/
+
+/*
+		// Debug R65C02
+		ImGui::Begin("R65C02");
+		ImGui::Text("clk:      0x%01X", top->top__DOT__cpu__DOT__clk);	
+		ImGui::Text("enable:   0x%01X", top->top__DOT__cpu__DOT__enable);	
+		ImGui::Text("nmi_n:    0x%01X", top->top__DOT__cpu__DOT__nmi_n);	
+		ImGui::Text("irq_n:    0x%01X", top->top__DOT__cpu__DOT__irq_n);									
+		ImGui::Text("di:       0x%01X", top->top__DOT__cpu__DOT__di);	
+		ImGui::Text("dout:     0x%01X", top->top__DOT__cpu__DOT__dout);	
+		ImGui::Text("addr:     0x%01X", top->top__DOT__cpu__DOT__addr);	
+		ImGui::Text("nwe:      0x%01X", top->top__DOT__cpu__DOT__nwe);	
+		ImGui::Text("sync:     0x%01X", top->top__DOT__cpu__DOT__sync);	
+		ImGui::Text("sync_irq: 0x%01X", top->top__DOT__cpu__DOT__sync_irq);	
+		ImGui::Text("Regs:     0x%01X", top->top__DOT__cpu__DOT__Regs);	
+		ImGui::Spacing();		
+		ImGui::End();
+*/
 
 		// Trace/VCD window
 		ImGui::Begin(windowTitle_Trace);

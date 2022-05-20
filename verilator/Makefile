@@ -59,10 +59,8 @@ V_SRC = \
 	$(RTL)/ram88.v \
 	$(RTL)/rom.v \		
 	$(RTL)/video.v \
-	$(RTL)/65c02/ALU.v \
-	$(RTL)/65c02/cpu_65c02.v \
-	$(RTL)/65c02/cpu.v \		
-	$(RTL)/new65c02/r65c02.sv
+	$(RTL)/new65c02/ncpu_65c02.v \
+	$(RTL)/new65c02/nALU.v
 
 C_SRC = \
 	sim_main.cpp  \
