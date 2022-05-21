@@ -204,8 +204,11 @@ localparam CONF_STR = {
 	"F,binsv,Load Cartridge;",
 	"-;",
 	"O[122:121],Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
-	//"O23,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%;",	
+	"O23,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%;",	
 	"OAB,Scale,Normal,V-Integer,Narrower HV-Integer,Wider HV-Integer;",	
+	"-;",
+	"O7,Custom Palette,Off,On;",
+	"D0FC3,SGBGBP,Load Palette;",
 	"-;",
 	"T0,Reset;",
 	"R0,Reset and close OSD;",
@@ -481,6 +484,29 @@ always @(posedge clk_sys)
 
 ////////////////////////////////////////////////
 
+wire palette_download = (ioctl_index[5:0] == 3) && ioctl_download;
+
+reg [127:0] palette = 128'h828214517356305A5F1A3B4900000000;
+
+always @(posedge clk_sys) begin
+	if (palette_download & ioctl_wr) begin
+			palette[127:0] <= {palette[119:0], ioctl_dout[7:0]};
+	end
+end
+
+wire [23:0] color_fg = {palette[127:104]};
+wire [23:0] color_bg = {palette[55:32]};
+
+wire use_pal = status[7];
+
+wire [7:0] r_pal, g_pal, b_pal;
+
+assign r_pal = vga_de ? (use_pal ? (|red ? color_fg[23:16] : color_bg[23:16]) : red)  : 8'd0;
+assign g_pal = vga_de ? (use_pal ? (|red ? color_fg[15:8]  : color_bg[15:8])  : 8'd0) : 8'd0;
+assign b_pal = vga_de ? (use_pal ? (|red ? color_fg[7:0]   : color_bg[7:0])   : 8'd0) : 8'd0;
+
+////////////////////////////////////////////////
+
 rom cart(
   .clk(clk_sys),
   .addr(rom_addr),
@@ -547,6 +573,9 @@ audio audio(
   .CH2(audio_ch2)
 );
 
+
+wire vga_de;
+
 video video(
   .clk(clk_vid),
   .ce_pxl(CE_PIXEL),
@@ -566,31 +595,34 @@ video video(
   .blue(blue)
 );
 
-
+/*
 video_cleaner video_cleaner(
 	.clk_vid(clk_vid),
 	.ce_pix(CE_PIXEL),
+
 	.R(red),
 	.G(green),
 	.B(blue),
+
 	.HSync(~hsync),
 	.VSync(~vsync),
 	.HBlank(hblank),
 	.VBlank(vblank),
-	.VGA_R(VGA_R),
+
+	.VGA_R(VGA_R), 
 	.VGA_G(VGA_G),
-	.VGA_B(VGA_B),
-	.VGA_VS(VGA_VS),
-	.VGA_HS(VGA_HS),
+	.VGA_B(VGA_B), 
+	.VGA_VS(VGA_VS), 
+	.VGA_HS(VGA_HS), 
 	.VGA_DE(VGA_DE)
 );
-
+*/
 
 video_freak video_freak
 (
 	.*,
-	.VGA_DE_IN(VGA_DE),
-	.VGA_DE(),
+	.VGA_DE_IN(vga_de),
+	.VGA_DE(VGA_DE),
 
 	.ARX((!ar) ? 12'd4 : (ar - 1'd1)),
 	.ARY((!ar) ? 12'd3 : 12'd0),
@@ -599,24 +631,34 @@ video_freak video_freak
 	.SCALE(status[11:10])
 );
 
-/*
-video_mixer #(640, 1) mixer
+video_mixer #(640, 0) mixer
 (
 	.*,
+
+  .CE_PIXEL(),
 	.hq2x(scale == 1),
 	.scandoubler(scale || forced_scandoubler),
 	.gamma_bus(),
 
-	.R({4{VGA_R}}),
-	.G({4{VGA_G}}),
-	.B({4{VGA_B}}),
+	.R(red), // red
+	.G(green), // green
+	.B(blue), // blue
+	//.R(r_pal), // red
+	//.G(g_pal), // green
+	//.B(b_pal), // blue
 
-	.HSync(~VGA_VS),
-	.VSync(~VGA_VS),
+	.HSync(~hsync),
+	.VSync(~vsync),
 	.HBlank(hblank),
-	.VBlank(vblank)
+	.VBlank(vblank),
+
+	.VGA_R(VGA_R), 
+	.VGA_G(VGA_G),
+	.VGA_B(VGA_B),
+	.VGA_VS(VGA_VS), 
+	.VGA_HS(VGA_HS),
+	.VGA_DE(vga_de) 
 );
-*/
 
 ncpu_65c02 cpu(
   .clk(clk_cpu),
