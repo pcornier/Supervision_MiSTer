@@ -272,7 +272,7 @@ reg [15:0] nmi_clk;
 
 wire nmi = nmi_clk == 0;
 always @(posedge clk_cpu) nmi_clk <= nmi_clk + 16'b1;
-wire reset = RESET | status[0] | buttons[1] | ioctl_download;
+wire reset = RESET | status[0] | buttons[1] | (ioctl_download && ioctl_index==0);
 
 //////////////////////////////////////////////////////////////////
 
@@ -501,9 +501,9 @@ wire use_pal = status[7];
 
 wire [7:0] r_pal, g_pal, b_pal;
 
-assign r_pal = vga_de ? (use_pal ? (|red ? color_fg[23:16] : color_bg[23:16]) : red)  : 8'd0;
-assign g_pal = vga_de ? (use_pal ? (|red ? color_fg[15:8]  : color_bg[15:8])  : 8'd0) : 8'd0;
-assign b_pal = vga_de ? (use_pal ? (|red ? color_fg[7:0]   : color_bg[7:0])   : 8'd0) : 8'd0;
+assign r_pal = vga_de ? (use_pal ? (|red ? color_fg[23:16] : color_bg[23:16]) : 8'd0)  : 8'd0;
+assign g_pal = vga_de ? (use_pal ? (|green ? color_fg[15:8]  : color_bg[15:8])  : green) : 8'd0;
+assign b_pal = vga_de ? (use_pal ? (|blue ? color_fg[7:0]   : color_bg[7:0])   : 8'd0)  : 8'd0;
 
 ////////////////////////////////////////////////
 
@@ -573,7 +573,6 @@ audio audio(
   .CH2(audio_ch2)
 );
 
-
 wire vga_de;
 
 video video(
@@ -640,12 +639,12 @@ video_mixer #(640, 0) mixer
 	.scandoubler(scale || forced_scandoubler),
 	.gamma_bus(),
 
-	.R(red), // red
-	.G(green), // green
-	.B(blue), // blue
-	//.R(r_pal), // red
-	//.G(g_pal), // green
-	//.B(b_pal), // blue
+	//.R(red),  // red
+	//.G(green),// green
+	//.B(blue), // blue
+	.R(r_pal),  // red
+	.G(g_pal),  // green
+	.B(b_pal),  // blue
 
 	.HSync(~hsync),
 	.VSync(~vsync),
