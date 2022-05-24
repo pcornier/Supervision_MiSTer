@@ -272,7 +272,7 @@ reg [15:0] nmi_clk;
 
 wire nmi = nmi_clk == 0;
 always @(posedge clk_cpu) nmi_clk <= nmi_clk + 16'b1;
-wire reset = RESET | status[0] | buttons[1] | (ioctl_download && ioctl_index==0);
+wire reset = RESET | status[0] | buttons[1] | ioctl_download;
 
 //////////////////////////////////////////////////////////////////
 
@@ -283,8 +283,10 @@ wire hsync;
 wire vsync;
 wire hblank;
 wire vblank;
-assign CLK_VIDEO = clk_vid;
+
 wire [7:0] red, green, blue;
+wire palette_download = (ioctl_index[5:0] == 3) && ioctl_download;
+assign CLK_VIDEO = clk_vid;
 
 reg [7:0] sys_ctl;
 reg [7:0] irq_timer; // 2023
@@ -441,7 +443,6 @@ always @(posedge clk_sys)
     endcase
   end
 
-
 // write to dma registers
 always @(posedge clk_sys)
   if (dma_cs && cpu_we)
@@ -481,31 +482,6 @@ always @(posedge clk_sys)
       3'h3: sys_dout <= irq_timer;
       3'h6: sys_dout <= sys_ctl;
     endcase
-
-////////////////////////////////////////////////
-
-wire palette_download = (ioctl_index[5:0] == 3) && ioctl_download;
-
-reg [127:0] palette = 128'h828214517356305A5F1A3B4900000000;
-
-always @(posedge clk_sys) begin
-	if (palette_download & ioctl_wr) begin
-			palette[127:0] <= {palette[119:0], ioctl_dout[7:0]};
-	end
-end
-
-wire [23:0] color_fg = {palette[127:104]};
-wire [23:0] color_bg = {palette[55:32]};
-
-wire use_pal = status[7];
-
-wire [7:0] r_pal, g_pal, b_pal;
-
-assign r_pal = vga_de ? (use_pal ? (|red ? color_fg[23:16] : color_bg[23:16]) : 8'd0)  : 8'd0;
-assign g_pal = vga_de ? (use_pal ? (|green ? color_fg[15:8]  : color_bg[15:8])  : green) : 8'd0;
-assign b_pal = vga_de ? (use_pal ? (|blue ? color_fg[7:0]   : color_bg[7:0])   : 8'd0)  : 8'd0;
-
-////////////////////////////////////////////////
 
 rom cart(
   .clk(clk_sys),
@@ -591,7 +567,12 @@ video video(
   .vblank(vblank),
   .red(red),
   .green(green),
-  .blue(blue)
+  .blue(blue),
+
+  .pal_dl(palette_download),
+  .pal_data(ioctl_dout),
+  .pal_wr(ioctl_wr),
+  .pal_en(status[7])  
 );
 
 /*
@@ -633,18 +614,14 @@ video_freak video_freak
 video_mixer #(640, 0) mixer
 (
 	.*,
-
-  .CE_PIXEL(),
+    .CE_PIXEL(),
 	.hq2x(scale == 1),
 	.scandoubler(scale || forced_scandoubler),
 	.gamma_bus(),
 
-	//.R(red),  // red
-	//.G(green),// green
-	//.B(blue), // blue
-	.R(r_pal),  // red
-	.G(g_pal),  // green
-	.B(b_pal),  // blue
+	.R(red),  
+	.G(green),
+	.B(blue), 
 
 	.HSync(~hsync),
 	.VSync(~vsync),

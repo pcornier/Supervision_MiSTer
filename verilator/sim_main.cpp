@@ -36,6 +36,8 @@ bool single_step = 0;
 bool multi_step = 0;
 int multi_step_amount = 1024;
 
+bool palette_enable = 0;
+
 // Debug GUI 
 // ---------
 const char* windowTitle = "Verilator Sim: Supervision";
@@ -170,6 +172,8 @@ int verilate() {
 			if (clk_sys.clk) { bus.AfterEval(); }
 		}
 
+		top->palette_enable = palette_enable;
+
 #ifndef DISABLE_AUDIO
 		if (clk_48.IsRising())
 		{
@@ -256,8 +260,8 @@ int main(int argc, char** argv, char** env) {
 	// Setup video output
 	if (video.Initialise(windowTitle) == 1) { return 1; }
 
-	//bus.QueueDownload("./GrandPrix.sv", 0, true);
-	bus.QueueDownload("./LinearRacing.bin", 0, true);
+	bus.QueueDownload("./GrandPrix.sv", 0, true);
+	//bus.QueueDownload("./LinearRacing.bin", 0, true);
 
 #ifdef WIN32
 	MSG msg;
@@ -307,7 +311,9 @@ int main(int argc, char** argv, char** env) {
 		if (ImGui::Button("Multi Step")) { run_enable = 0; multi_step = 1; }
 		//ImGui::SameLine();
 		ImGui::SliderInt("Multi step amount", &multi_step_amount, 8, 1024);
-
+		if (ImGui::Button("Load Palette")) {
+    	ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".gbp", "."); } ImGui::SameLine();	
+		ImGui::Checkbox("Palette", &palette_enable);
 		ImGui::End();
 
 		// Debug log window
@@ -324,9 +330,11 @@ int main(int argc, char** argv, char** env) {
 		ImGui::Begin("VRAM");
 		mem_edit.DrawContents(&top->top__DOT__vram__DOT__memory, 8192, 0);
 		ImGui::End();
-
+		ImGui::Begin("PALETTE");
+		mem_edit.DrawContents(&top->top__DOT__video__DOT__palette, 16, 0);
+		ImGui::End();
 /*
-		// Debug R65C02
+		// Debug t65
 		ImGui::Begin("t65");
 		ImGui::Text("clk:      0x%01X", top->top__DOT__cpu__DOT__clk);	
 		ImGui::Text("enable:   0x%01X", top->top__DOT__cpu__DOT__enable);	
@@ -414,6 +422,22 @@ int main(int argc, char** argv, char** env) {
 		ImGui::Image(video.texture_id, ImVec2(video.output_width * VGA_SCALE_X, video.output_height * VGA_SCALE_Y));
 		ImGui::End();
 
+		// File dialog
+  		if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
+  		{
+    		// action if OK
+    		if (ImGuiFileDialog::Instance()->IsOk())
+    		{
+      			std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+      			std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
+      			// action
+				fprintf(stderr,"filePathName: %s\n",filePathName.c_str());
+				fprintf(stderr,"filePath: %s\n",filePath.c_str());
+     			bus.QueueDownload(filePathName, 3, false);
+    		}
+   	    	// close
+    		ImGuiFileDialog::Instance()->Close();
+  		}
 
 #ifndef DISABLE_AUDIO
 

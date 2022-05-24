@@ -1,5 +1,4 @@
 `timescale 1ns/1ns
-// top end ff for verilator
 
 module top(
 
@@ -7,17 +6,19 @@ module top(
    input clk_cpu,
    input clk_vid,
 
-   input reset/*verilator public_flat*/,
-   input [11:0]  inputs/*verilator public_flat*/,
+   input reset,
+   input [11:0] inputs,
 
-   output [7:0] VGA_R/*verilator public_flat*/,
-   output [7:0] VGA_G/*verilator public_flat*/,
-   output [7:0] VGA_B/*verilator public_flat*/,
+   output [7:0] VGA_R,
+   output [7:0] VGA_G,
+   output [7:0] VGA_B,
    
    output VGA_HS,
    output VGA_VS,
    output VGA_HB,
    output VGA_VB,
+
+   input palette_enable,
 
    output [15:0] AUDIO_L,
    output [15:0] AUDIO_R,
@@ -30,7 +31,6 @@ module top(
    input [7:0]  ioctl_din,   
    input [7:0]  ioctl_index,
    output  reg  ioctl_wait=1'b0
-   
 );
 
 assign CE_PIXEL = 1'b1;
@@ -56,8 +56,9 @@ wire hsync;
 wire vsync;
 wire hblank;
 wire vblank;
-assign CLK_VIDEO = clk_vid;
 wire [7:0] red, green, blue;
+wire palette_download = (ioctl_index[5:0] == 3) && ioctl_download;
+assign CLK_VIDEO = clk_vid;
 
 reg [7:0] sys_ctl;
 reg [7:0] irq_timer; // 2023
@@ -336,9 +337,15 @@ video video(
   .vsync(VGA_VS),
   .hblank(VGA_HB),
   .vblank(VGA_VB),
+
   .red(VGA_R),
   .green(VGA_G),
-  .blue(VGA_B)
+  .blue(VGA_B),
+
+  .pal_dl(palette_download),
+  .pal_data(ioctl_dout),
+  .pal_wr(ioctl_wr),
+  .pal_en(palette_enable)    
 );
 
 /*

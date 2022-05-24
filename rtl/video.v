@@ -22,8 +22,12 @@ module video(
   output vblank,
   output reg [7:0] red,
   output reg [7:0] green,
-  output reg [7:0] blue
+  output reg [7:0] blue,
 
+  input pal_dl,
+  input [7:0] pal_data,
+  input pal_wr,
+  input pal_en
 );
 
 reg [9:0] hcount;
@@ -52,15 +56,35 @@ assign ce_pxl = hcount[0] == 1;
 // assign colors
 wire [2:0] index = { lcdx[1:0], 1'b0 };
 
+//reg [127:0] palette = 128'h828214517356305A5F1A3B4900000000; // old
+reg [127:0] palette = 128'hffeffff7b58c84739c18101000000000; // new
+
+always @(posedge clk) begin
+	if (pal_dl & pal_wr) begin
+			palette[127:0] <= {palette[119:0], pal_data[7:0]};
+  end
+end
+
+wire [23:0] color_fg = {palette[127:104]};
+wire [23:0] color_bg = {palette[55:32]};
+wire [7:0] r_pal, g_pal, b_pal;
+
 always @(posedge clk)
   if (ce && lcdx != 0 && lcdy != 0) begin
     if (ce_pxl) begin
 		 case (data[index+:2])
-			2'b00: { red, green, blue } <= 24'h87BA6B;
-			2'b01: { red, green, blue } <= 24'h6BA378;
-			2'b10: { red, green, blue } <= 24'h386B82;
-			2'b11: { red, green, blue } <= 24'h384052;
+			2'b00: { red, green, blue } <= 24'h87BA6B; 
+			2'b01: begin { red, green, blue } <= 24'h6BA378; $display( "(2'b01) red: %x green: %x blue: %x fg %x bg %x", red, green, blue, color_fg[23:16], color_bg[23:16]); end
+			2'b10: begin { red, green, blue } <= 24'h386B82; $display( "(2'b10) red: %x green: %x blue: %x fg %x bg %x", red, green, blue, color_fg[15:8], color_bg[15:8]); end
+			2'b11: begin { red, green, blue } <= 24'h384052; $display( "(2'b11) red: %x green: %x blue: %x fg %x bg %x", red, green, blue, color_fg[7:0], color_bg[7:0]); end      
 		 endcase
+
+     if(pal_en) begin
+        red   <= {red + color_fg[23:16]};
+        green <= {green + color_fg[15:8]};
+        blue  <= {blue + color_fg[7:0]};    
+     end
+
 	 end
   end
   else
