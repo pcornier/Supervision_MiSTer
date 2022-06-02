@@ -26,7 +26,7 @@ module emu
 	input         RESET,
 
 	//Must be passed to hps_io module
-	inout  [45:0] HPS_BUS,
+	inout  [48:0] HPS_BUS,
 
 	//Base video clock. Usually equals to CLK_SYS.
 	output        CLK_VIDEO,
@@ -36,8 +36,9 @@ module emu
 	output        CE_PIXEL,
 
 	//Video aspect ratio for HDMI. Most retro systems have ratio 4:3.
-	output  [7:0] VIDEO_ARX,
-	output  [7:0] VIDEO_ARY,
+	//if VIDEO_ARX[12] or VIDEO_ARY[12] is set then [11:0] contains scaled size instead of aspect ratio.
+	output [12:0] VIDEO_ARX,
+	output [12:0] VIDEO_ARY,
 
 	output  [7:0] VGA_R,
 	output  [7:0] VGA_G,
@@ -47,15 +48,20 @@ module emu
 	output        VGA_DE,    // = ~(VBlank | HBlank)
 	output        VGA_F1,
 	output [1:0]  VGA_SL,
+	output        VGA_SCALER, // Force VGA scaler
 
-	/*
-	// Use framebuffer from DDRAM (USE_FB=1 in qsf)
+	input  [11:0] HDMI_WIDTH,
+	input  [11:0] HDMI_HEIGHT,
+	output        HDMI_FREEZE,
+
+`ifdef MISTER_FB
+	// Use framebuffer in DDRAM (USE_FB=1 in qsf)
 	// FB_FORMAT:
 	//    [2:0] : 011=8bpp(palette) 100=16bpp 101=24bpp 110=32bpp
 	//    [3]   : 0=16bits 565 1=16bits 1555
 	//    [4]   : 0=RGB  1=BGR (for 16/24/32 modes)
 	//
-	// FB_STRIDE either 0 (rounded to 256 bytes) or multiple of 16 bytes.
+	// FB_STRIDE either 0 (rounded to 256 bytes) or multiple of pixel size (in bytes)
 	output        FB_EN,
 	output  [4:0] FB_FORMAT,
 	output [11:0] FB_WIDTH,
@@ -66,6 +72,7 @@ module emu
 	input         FB_LL,
 	output        FB_FORCE_BLANK,
 
+`ifdef MISTER_FB_PALETTE
 	// Palette control for 8bit modes.
 	// Ignored for other video modes.
 	output        FB_PAL_CLK,
@@ -73,7 +80,8 @@ module emu
 	output [23:0] FB_PAL_DOUT,
 	input  [23:0] FB_PAL_DIN,
 	output        FB_PAL_WR,
-	*/
+`endif
+`endif
 
 	output        LED_USER,  // 1 - ON, 0 - OFF.
 
@@ -130,6 +138,20 @@ module emu
 	output        SDRAM_nRAS,
 	output        SDRAM_nWE,
 
+`ifdef MISTER_DUAL_SDRAM
+	//Secondary SDRAM
+	//Set all output SDRAM_* signals to Z ASAP if SDRAM2_EN is 0
+	input         SDRAM2_EN,
+	output        SDRAM2_CLK,
+	output [12:0] SDRAM2_A,
+	output  [1:0] SDRAM2_BA,
+	inout  [15:0] SDRAM2_DQ,
+	output        SDRAM2_nCS,
+	output        SDRAM2_nCAS,
+	output        SDRAM2_nRAS,
+	output        SDRAM2_nWE,
+`endif
+
 	input         UART_CTS,
 	output        UART_RTS,
 	input         UART_RXD,
@@ -157,8 +179,9 @@ assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
 assign {SDRAM_DQ, SDRAM_A, SDRAM_BA, SDRAM_CLK, SDRAM_CKE, SDRAM_DQML, SDRAM_DQMH, SDRAM_nWE, SDRAM_nCAS, SDRAM_nRAS, SDRAM_nCS} = 'Z;
 assign {DDRAM_CLK, DDRAM_BURSTCNT, DDRAM_ADDR, DDRAM_DIN, DDRAM_BE, DDRAM_RD, DDRAM_WE} = '0;
 
-assign VGA_SL = 0;
+assign VGA_SL = scale ? scale - 1'd1 : 2'd0;
 assign VGA_F1 = 0;
+assign VGA_SCALER= 0;
 
 assign AUDIO_S = 0;
 assign AUDIO_L = { audio_ch2, 12'd0 };
@@ -171,16 +194,21 @@ assign BUTTONS = 0;
 
 //////////////////////////////////////////////////////////////////
 
-assign VIDEO_ARX = status[1] ? 8'd4 : 8'd16;
-assign VIDEO_ARY = status[1] ? 8'd3  : 8'd9;
+wire [1:0] scale = status[3:2];
+wire [1:0] ar = status[122:121];
 
 `include "build_id.v"
 localparam CONF_STR = {
 	"Supervision;;",
 	"-;",
-	"O1,Aspect ratio,Original,4:3;",
+	"F,binsv,Load Cartridge;",
 	"-;",
-	"F,bin,Load Cartridge;",
+	"O[122:121],Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
+	"O23,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%;",	
+	"OAB,Scale,Normal,V-Integer,Narrower HV-Integer,Wider HV-Integer;",	
+	"-;",
+	"O7,Custom Palette,Off,On;",
+	"D0FC3,SGBGBP,Load Palette;",
 	"-;",
 	"T0,Reset;",
 	"R0,Reset and close OSD;",
@@ -191,7 +219,7 @@ localparam CONF_STR = {
 wire forced_scandoubler;
 wire [15:0] joystick_0;
 wire  [1:0] buttons;
-wire [31:0] status;
+wire [127:0] status;
 wire [10:0] ps2_key;
 
 wire [24:0] ioctl_addr;
@@ -201,14 +229,13 @@ wire ioctl_wr;
 wire ioctl_download;
 wire ioctl_wait;
 
-hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
+hps_io #(.CONF_STR(CONF_STR)) hps_io
 (
 	.clk_sys(clk_sys),
 	.HPS_BUS(HPS_BUS),
 	.EXT_BUS(),
 	.gamma_bus(),
 
-	.conf_str(CONF_STR),
 	.forced_scandoubler(forced_scandoubler),
 
 	.buttons(buttons),
@@ -226,7 +253,6 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 	.ioctl_index(ioctl_index)
 );
 
-
 ///////////////////////   CLOCKS   ///////////////////////////////
 
 wire clk_sys;
@@ -236,10 +262,10 @@ wire clk_vid;
 pll pll
 (
 	.refclk(CLK_50M),
-	.rst(0),
+	.rst(0), 
 	.outclk_0(clk_sys), // 50
-	.outclk_1(clk_vid), // 36
-	.outclk_2(clk_cpu) // 6
+	.outclk_1(clk_vid), // 9
+	.outclk_2(clk_cpu)  // 4
 );
 
 reg [15:0] nmi_clk;
@@ -250,12 +276,17 @@ wire reset = RESET | status[0] | buttons[1] | ioctl_download;
 
 //////////////////////////////////////////////////////////////////
 
+reg ce_pix = 1'b1;
+wire freeze_sync;
+
 wire hsync;
 wire vsync;
 wire hblank;
 wire vblank;
-assign CLK_VIDEO = clk_vid;
+
 wire [7:0] red, green, blue;
+wire palette_download = (ioctl_index[5:0] == 3) && ioctl_download;
+assign CLK_VIDEO = clk_vid;
 
 reg [7:0] sys_ctl;
 reg [7:0] irq_timer; // 2023
@@ -302,7 +333,6 @@ wire [3:0] audio_ch1, audio_ch2;
 
 ////////////////////// IRQ //////////////////////////
 
-
 reg [13:0] timer_div;
 
 // irq_tim
@@ -336,7 +366,6 @@ always @(posedge clk_cpu)
   else if (timer_div == 0 && irq_timer > 0)
     irq_timer <= irq_timer - 8'b1;
 
-
 /////////////////////////// MEMORY MAP /////////////////////
 
 // 0000 - 1FFF - WRAM
@@ -346,7 +375,6 @@ always @(posedge clk_cpu)
 // 6000 - 7FFF - VRAM - mirrors ??
 // 8000 - BFFF - banks
 // C000 - FFFF - last 16k of cartridge
-
 
 wire wram_cs = AB ==? 16'b000x_xxxx_xxxx_xxxx;
 wire lcd_cs  = AB ==? 16'b0010_0000_0000_0xxx; // match 2000-2007 LCD control registers
@@ -415,7 +443,6 @@ always @(posedge clk_sys)
     endcase
   end
 
-
 // write to dma registers
 always @(posedge clk_sys)
   if (dma_cs && cpu_we)
@@ -456,10 +483,6 @@ always @(posedge clk_sys)
       3'h6: sys_dout <= sys_ctl;
     endcase
 
-
-////////////////////////////////////////////////
-
-
 rom cart(
   .clk(clk_sys),
   .addr(rom_addr),
@@ -470,7 +493,6 @@ rom cart(
   .rom_init_address(ioctl_addr),
   .rom_init_data(ioctl_dout)
 );
-
 
 ram88 wram(
   .clk(clk_sys),
@@ -527,6 +549,8 @@ audio audio(
   .CH2(audio_ch2)
 );
 
+wire vga_de;
+
 video video(
   .clk(clk_vid),
   .ce_pxl(CE_PIXEL),
@@ -543,28 +567,76 @@ video video(
   .vblank(vblank),
   .red(red),
   .green(green),
-  .blue(blue)
+  .blue(blue),
+
+  .pal_dl(palette_download),
+  .pal_data(ioctl_dout),
+  .pal_wr(ioctl_wr),
+  .pal_en(status[7])  
 );
 
+/*
 video_cleaner video_cleaner(
 	.clk_vid(clk_vid),
 	.ce_pix(CE_PIXEL),
+
 	.R(red),
 	.G(green),
 	.B(blue),
+
 	.HSync(~hsync),
 	.VSync(~vsync),
 	.HBlank(hblank),
 	.VBlank(vblank),
-	.VGA_R(VGA_R),
+
+	.VGA_R(VGA_R), 
 	.VGA_G(VGA_G),
-	.VGA_B(VGA_B),
-	.VGA_VS(VGA_VS),
-	.VGA_HS(VGA_HS),
+	.VGA_B(VGA_B), 
+	.VGA_VS(VGA_VS), 
+	.VGA_HS(VGA_HS), 
 	.VGA_DE(VGA_DE)
 );
+*/
 
-cpu_65c02 cpu(
+video_freak video_freak
+(
+	.*,
+	.VGA_DE_IN(vga_de),
+	.VGA_DE(VGA_DE),
+
+	.ARX((!ar) ? 12'd4 : (ar - 1'd1)),
+	.ARY((!ar) ? 12'd3 : 12'd0),
+	.CROP_SIZE(0),
+	.CROP_OFF(0),
+	.SCALE(status[11:10])
+);
+
+video_mixer #(640, 0) mixer
+(
+	.*,
+    .CE_PIXEL(),
+	.hq2x(scale == 1),
+	.scandoubler(scale || forced_scandoubler),
+	.gamma_bus(),
+
+	.R(red),  
+	.G(green),
+	.B(blue), 
+
+	.HSync(~hsync),
+	.VSync(~vsync),
+	.HBlank(hblank),
+	.VBlank(vblank),
+
+	.VGA_R(VGA_R), 
+	.VGA_G(VGA_G),
+	.VGA_B(VGA_B),
+	.VGA_VS(VGA_VS), 
+	.VGA_HS(VGA_HS),
+	.VGA_DE(vga_de) 
+);
+
+ncpu_65c02 cpu(
   .clk(clk_cpu),
   .reset(reset),
   .AB(cpu_addr),
@@ -572,7 +644,7 @@ cpu_65c02 cpu(
   .DO(cpu_dout),
   .WE(cpu_we),
   .IRQ(irq_tim | irq_dma),
-  .NMI(nmi),
+  .NMI(nmi),  
   .RDY(cpu_rdy)
 );
 
